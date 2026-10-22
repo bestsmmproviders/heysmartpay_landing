@@ -1,0 +1,240 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="HeySmartPay">
+	<main class="stage">
+		<canvas class="field" id="field" aria-hidden="true"></canvas>
+		<div class="glow" id="glow" aria-hidden="true"></div>
+		<div class="horizon" aria-hidden="true"></div>
+		<div class="grain" aria-hidden="true"></div>
+
+		<h1 class="wordmark"><span class="text">HEYSMARTPAY</span><span class="sheen" aria-hidden="true">HEYSMARTPAY</span></h1>
+	</main>
+</Base>
+
+<style>
+	.stage {
+		position: relative;
+		display: grid;
+		place-items: center;
+		height: 100%;
+		overflow: hidden;
+		isolation: isolate;
+		cursor: default;
+	}
+
+	.field {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		z-index: -3;
+	}
+
+	/* Light source below the horizon; drifts after the cursor */
+	.glow {
+		position: absolute;
+		left: 50%;
+		top: 64%;
+		width: 150vmax;
+		height: 150vmax;
+		transform: translate(-50%, -50%);
+		background: radial-gradient(
+			circle at center,
+			rgba(255, 255, 255, 0.13) 0%,
+			rgba(255, 255, 255, 0.045) 16%,
+			rgba(0, 0, 0, 0) 40%
+		);
+		animation: breathe 10s ease-in-out infinite;
+		will-change: transform;
+		z-index: -2;
+	}
+
+	.horizon {
+		position: absolute;
+		left: 50%;
+		top: 64%;
+		width: min(78vw, 860px);
+		height: 1px;
+		transform: translateX(-50%);
+		background: linear-gradient(
+			90deg,
+			rgba(255, 255, 255, 0) 0%,
+			rgba(255, 255, 255, 0.55) 50%,
+			rgba(255, 255, 255, 0) 100%
+		);
+		z-index: -1;
+	}
+
+	.horizon::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 1px;
+		height: 90px;
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+		mask: linear-gradient(90deg, transparent, #000 35%, #000 65%, transparent);
+		-webkit-mask: linear-gradient(90deg, transparent, #000 35%, #000 65%, transparent);
+	}
+
+	/* Fine film grain so the black is not flat */
+	.grain {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		pointer-events: none;
+		opacity: 0.045;
+		background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+		mix-blend-mode: screen;
+	}
+
+	.wordmark {
+		position: relative;
+		margin: 0 0 6vh;
+		font-weight: 500;
+		font-size: clamp(1.5rem, 5vw, 3.4rem);
+		letter-spacing: 0.42em;
+		text-indent: 0.42em;
+		line-height: 1;
+		opacity: 0;
+		animation: reveal 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s forwards;
+		z-index: 2;
+	}
+
+	/* Brushed-metal base */
+	.wordmark .text {
+		background: linear-gradient(
+			180deg,
+			#ffffff 0%,
+			#d9dde2 38%,
+			#8e949b 52%,
+			#e6e9ec 66%,
+			#ffffff 100%
+		);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+
+	/* Light sweep passing over the letters every few seconds */
+	.wordmark .sheen {
+		position: absolute;
+		inset: 0;
+		color: transparent;
+		background: linear-gradient(
+			100deg,
+			rgba(255, 255, 255, 0) 40%,
+			rgba(255, 255, 255, 0.95) 50%,
+			rgba(255, 255, 255, 0) 60%
+		);
+		background-size: 250% 100%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		animation: sweep 7s cubic-bezier(0.6, 0, 0.2, 1) 2.2s infinite;
+	}
+
+	@keyframes sweep {
+		0% { background-position: 130% 0; }
+		28% { background-position: -30% 0; }
+		100% { background-position: -30% 0; }
+	}
+
+	@keyframes reveal {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+			filter: blur(8px);
+			letter-spacing: 0.6em;
+		}
+		to {
+			opacity: 1;
+			transform: none;
+			filter: blur(0);
+			letter-spacing: 0.42em;
+		}
+	}
+
+	@keyframes breathe {
+		0%, 100% { opacity: 0.8; }
+		50% { opacity: 1; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.glow, .wordmark .sheen { animation: none; }
+		.wordmark { animation: none; opacity: 1; }
+		.field { display: none; }
+	}
+</style>
+
+<script>
+	const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const canvas = document.getElementById('field') as HTMLCanvasElement;
+	const glow = document.getElementById('glow') as HTMLElement;
+	const ctx = canvas.getContext('2d');
+
+	// Cursor-following glow (eased)
+	let tx = 0, ty = 0, cx = 0, cy = 0;
+	window.addEventListener('pointermove', (e) => {
+		tx = (e.clientX / window.innerWidth - 0.5) * 2;
+		ty = (e.clientY / window.innerHeight - 0.5) * 2;
+	});
+
+	type P = { x: number; y: number; z: number; vx: number; vy: number; r: number; a: number; t: number };
+	let pts: P[] = [];
+	let w = 0, h = 0, dpr = 1;
+
+	function resize() {
+		dpr = Math.min(window.devicePixelRatio || 1, 2);
+		w = window.innerWidth;
+		h = window.innerHeight;
+		canvas.width = w * dpr;
+		canvas.height = h * dpr;
+		ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+		const n = Math.round((w * h) / 9000);
+		pts = Array.from({ length: n }, () => {
+			const z = Math.random();
+			return {
+				x: Math.random() * w,
+				y: Math.random() * h,
+				z,
+				vx: (Math.random() - 0.5) * 0.08 * (0.4 + z),
+				vy: -(0.02 + Math.random() * 0.06) * (0.4 + z),
+				r: 0.4 + z * 1.1,
+				a: 0.15 + z * 0.5,
+				t: Math.random() * Math.PI * 2,
+			};
+		});
+	}
+
+	function frame(now: number) {
+		if (!ctx) return;
+		cx += (tx - cx) * 0.03;
+		cy += (ty - cy) * 0.03;
+		glow.style.transform = `translate(calc(-50% + ${cx * 90}px), calc(-50% + ${cy * 50}px))`;
+
+		ctx.clearRect(0, 0, w, h);
+		for (const p of pts) {
+			p.x += p.vx + cx * 0.12 * p.z;
+			p.y += p.vy + cy * 0.06 * p.z;
+			p.t += 0.01;
+			if (p.y < -4) { p.y = h + 4; p.x = Math.random() * w; }
+			if (p.x < -4) p.x = w + 4;
+			if (p.x > w + 4) p.x = -4;
+			const depthFade = Math.min(1, (h - p.y) / h + 0.25); // brighter near the horizon
+			const alpha = p.a * (0.7 + 0.3 * Math.sin(p.t)) * depthFade;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+			ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+			ctx.fill();
+		}
+		requestAnimationFrame(frame);
+	}
+
+	if (!reduce && ctx) {
+		resize();
+		window.addEventListener('resize', resize);
+		requestAnimationFrame(frame);
+	}
+</script>
